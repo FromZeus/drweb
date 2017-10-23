@@ -1,0 +1,16 @@
+<!-- extend base layout -->
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Get status of task</h1>
+  <form action="" method="get" name="retrive_task">
+      <p>
+          Please enter id:<br>
+          {{ form.id(size=10) }}<br>
+          {% for error in form.id.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+          {% endfor %}<br>
+      </p>
+      <p><input type="submit" value="Status"></p>
+  </form>
+{% endblock %}

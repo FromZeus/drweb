@@ -1,0 +1,17 @@
+<!-- extend base layout -->
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Create a task</h1>
+  <form action="" method="post" name="create_task">
+      {{ form.hidden_tag() }}
+      <p>
+          Please enter the difficulty:<br>
+          {{ form.difficulty(size=10) }}<br>
+          {% for error in form.difficulty.errors %}
+            <span style="color: red;">[{{ error }}]</span>
+          {% endfor %}<br>
+      </p>
+      <p><input type="submit" value="Create"></p>
+  </form>
+{% endblock %}

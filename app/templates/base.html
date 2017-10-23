@@ -1,0 +1,26 @@
+<html>
+  <head>
+    {% if title %}
+    <title>{{ title }} - Task Maker</title>
+    {% else %}
+    <title>Task Maker</title>
+    {% endif %}
+  </head>
+  <body>
+    <div>Task Maker: <a href="/index">Home</a>
+      <a href="/create">Create</a>
+      <a href="/status">Status</a>
+    </div>
+    <hr>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+        {% for message in messages %}
+            <center><span style="color: green;">{{ message }}</span></center>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    <center>{% block content %}{% endblock %}</center>
+  </body>
+</html>
