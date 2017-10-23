@@ -20,9 +20,9 @@ class Bus(object):
             return None
 
     @staticmethod
-    def update_task_in_db(task, **update):
-        t = Bus.get_task_from_db(task.id)
-        for k, v in update.iteritems():
+    def update_task_in_db(id, **update):
+        t = Bus.get_task_from_db(id)
+        for k, v in update.items():
             setattr(t, k, v)
         db.session.commit()
 

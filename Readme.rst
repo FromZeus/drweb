@@ -17,7 +17,9 @@ TODO
 How to use
 ~~~~~~~~~~
 
-TODO
+Run: ``docker-compose up -d``.
+
+Application will appear at 5000 port.
 
 arguments
 ^^^^^^^^^

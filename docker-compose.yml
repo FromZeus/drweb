@@ -1,0 +1,102 @@
+version: '3'
+
+volumes:
+  sqlite_data: {}
+
+services:
+
+  rabbit:
+    image: rabbitmq:3.6.12-alpine
+    hostname: rabbit
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=drweb
+      - RABBITMQ_DEFAULT_PASS=password
+    healthcheck:
+      test: ["CMD", "sh", "-c", "netstat -autpln | grep LISTEN | grep :::5672"]
+      interval: 5s
+      timeout: 10s
+      retries: 15
+    networks:
+      drweb-net:
+    deploy:
+      restart_policy:
+          condition: any
+          delay: 5s
+          max_attempts: 3
+      mode: global
+      update_config:
+        delay: 2s
+
+  init_db:
+    build: .
+    command: |
+      sh -c "python manage.py db init -d ${SQLALCHEMY_DATABASE_BASE}/migrations && \
+      python manage.py db migrate -d ${SQLALCHEMY_DATABASE_BASE}/migrations && \
+      python manage.py db upgrade -d ${SQLALCHEMY_DATABASE_BASE}/migrations"
+    environment:
+      - SQLALCHEMY_DATABASE_BASE=${SQLALCHEMY_DATABASE_BASE}
+    volumes:
+      - "sqlite_data:${SQLALCHEMY_DATABASE_BASE}"
+    networks:
+      drweb-net:
+
+  app:
+    build: .
+    command: python server.py
+    restart: always
+    environment:
+      - SQLALCHEMY_DATABASE_BASE=${SQLALCHEMY_DATABASE_BASE}
+    healthcheck:
+      test: ["CMD", "sh", "-c", "netstat -autpln | grep LISTEN | grep 0.0.0.0:8080"]
+      interval: 5s
+      timeout: 10s
+      retries: 15
+    ports:
+      - "5000:8080"
+    volumes:
+      - "sqlite_data:${SQLALCHEMY_DATABASE_BASE}"
+    depends_on:
+      - rabbit
+      - init_db
+    networks:
+      drweb-net:
+    deploy:
+      restart_policy:
+          condition: any
+          delay: 5s
+          max_attempts: 3
+      mode: global
+      update_config:
+        delay: 2s
+
+  resolver:
+    build: .
+    command: python resolver.py
+    restart: always
+    environment:
+      - SQLALCHEMY_DATABASE_BASE=${SQLALCHEMY_DATABASE_BASE}
+    volumes:
+      - "sqlite_data:${SQLALCHEMY_DATABASE_BASE}"
+    depends_on:
+      - rabbit
+      - init_db
+    networks:
+      drweb-net:
+    deploy:
+      restart_policy:
+          condition: any
+          delay: 5s
+          max_attempts: 3
+      mode: replicated
+      replicas: 1
+      update_config:
+        delay: 2s
+
+networks:
+  drweb-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.240.0/24

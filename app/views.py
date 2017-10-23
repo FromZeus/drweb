@@ -20,9 +20,9 @@ def index():
 def create():
     form = CreateTaskForm()
     if form.validate_on_submit():
-        t = Task(status="In Queue",
+        t = Task(status="In queue",
                  creation_time=datetime.utcnow(),
-                 start_time=datetime.utcnow(),
+                 start_time=None,
                  end_time=None,
                  difficulty=form.difficulty.data)
         Bus.send_task_to_db(t)
