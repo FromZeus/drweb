@@ -1,4 +1,4 @@
-from flask import render_template, request, jsonify
+from flask import render_template, request, jsonify, abort
 from datetime import datetime
 
 from app import app
@@ -38,14 +38,17 @@ def create():
 def status():
     form = RetriveTaskForm()
     id = request.args.get("id")
-    if id is not None:
+    if id is not None and id != "":
         t = Task.query.get(id)
-        t = Bus.get_task_from_db(int(id))
-        return jsonify({"status": t.status,
-                        "creation_time": t.creation_time,
-                        "start_time": t.start_time,
-                        "end_time": t.end_time,
-                        "difficulty": t.difficulty})
+        if t is not None:
+            t = Bus.get_task_from_db(int(id))
+            return jsonify({"status": t.status,
+                            "creation_time": t.creation_time,
+                            "start_time": t.start_time,
+                            "end_time": t.end_time,
+                            "difficulty": t.difficulty})
+        else:
+            return abort(404)
 
     return render_template("status.html",
                            title="Get status of task",
