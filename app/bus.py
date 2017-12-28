@@ -28,12 +28,19 @@ class Bus(object):
 
     @staticmethod
     def send_task_to_queue(task, host, queue, user, password):
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(
-                host=host,
-                credentials=pika.PlainCredentials(user, password)
-            )
-        )
+        success = False
+        while not success:
+            try:
+                connection = pika.BlockingConnection(
+                    pika.ConnectionParameters(
+                        host=host,
+                        credentials=pika.PlainCredentials(user, password),
+                        heartbeat_interval=0
+                    )
+                )
+                success = True
+            except:
+                success = False
         channel = connection.channel()
         channel.queue_declare(queue=queue)
         channel.basic_publish(exchange="",
@@ -43,12 +50,19 @@ class Bus(object):
 
     @staticmethod
     def get_task_from_queue(host, queue, user, password):
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(
-                host=host,
-                credentials=pika.PlainCredentials(user, password)
-            )
-        )
+        success = False
+        while not success:
+            try:
+                connection = pika.BlockingConnection(
+                    pika.ConnectionParameters(
+                        host=host,
+                        credentials=pika.PlainCredentials(user, password),
+                        heartbeat_interval=0
+                    )
+                )
+                success = True
+            except:
+                success = False
         channel = connection.channel()
         channel.queue_declare(queue=queue)
         id = channel.basic_get(queue=queue, no_ack=True)
