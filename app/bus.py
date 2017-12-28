@@ -31,8 +31,7 @@ class Bus(object):
         connection = pika.BlockingConnection(
             pika.ConnectionParameters(
                 host=host,
-                credentials=pika.PlainCredentials(user, password),
-                heartbeat_interval=0
+                credentials=pika.PlainCredentials(user, password)
             )
         )
         channel = connection.channel()
