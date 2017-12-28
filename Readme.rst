@@ -49,6 +49,10 @@ feature/openshift
 
 * Look at your browser and wait for deployment
 
+* Remove all related to this stack
+
+  `oc delete pods,services,routes,imagestreams,buildconfigs,imageStreamtags,deployments,deploymentconfigs,secrets -l name=mystack`
+
 arguments
 ^^^^^^^^^
 
