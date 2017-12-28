@@ -1,4 +1,4 @@
-FROM python:3.5-alpine
+FROM python:3.6-alpine3.7
 
 LABEL mantainers="asteroid566@gmail.com"
 
