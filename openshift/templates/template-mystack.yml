@@ -1,0 +1,342 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: mystack
+labels:
+  name: mystack
+objects:
+
+- kind: Secret
+  apiVersion: v1
+  metadata:
+    name: mystack-secrets
+    labels:
+      name: ${STACK_NAME}
+  stringData:
+    rabbitmq-default-user: "drweb"
+    rabbitmq-default-pass: "password"
+  
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: ${QUEUE_SERVICE_NAME}
+    labels:
+      name: ${STACK_NAME}
+    annotations: 
+      description: "RabbitMQ service for my stack"
+  spec:
+    ports:
+    - name: ${QUEUE_SERVICE_NAME}
+      port: 5672
+      targetPort: 5672
+      protocol: TCP
+    selector:
+      name: ${STACK_NAME}
+
+- kind: DeploymentConfig
+  apiVersion: v1
+  metadata:
+    name: ${QUEUE_SERVICE_NAME}
+    labels:
+      name: ${STACK_NAME}
+    annotations:
+      description: "RabbitMQ deployment config"
+      template.alpha.openshift.io/wait-for-ready: "true"
+  spec:
+    strategy:
+      type: Recreate
+    triggers:
+    - type: ImageChange
+      imageChangeParams:
+        automatic: true
+        containerNames:
+        - ${QUEUE_SERVICE_NAME}
+        from:
+          kind: ImageStreamTag
+          name: "rabbitmq:3.6.12-alpine"
+        type: ConfigChange
+    replicas: 1
+    selector:
+      name: ${STACK_NAME}
+    template:
+      metadata:
+        name: ${QUEUE_SERVICE_NAME}
+        labels:
+          name: ${STACK_NAME}
+      spec:
+        containers:
+        - name: ${QUEUE_SERVICE_NAME}
+          image: " "
+          ports:
+          - containerPort: 5672
+            protocol: TCP
+          env:
+          - name: "RABBITMQ_DEFAULT_USER"
+            valueFrom:
+              secretKeyRef:
+                name: "mystack-secrets"
+                key : "rabbitmq-default-user"
+          - name: "RABBITMQ_DEFAULT_PASS"
+            valueFrom:
+              secretKeyRef:
+                name: "mystack-secrets"
+                key: "rabbitmq-default-pass"
+          readinessProbe:
+            timeoutSeconds: 1
+            initialDelaySeconds: 3
+            exec:
+              command:
+              - "/bin/sh"
+              - "-c"
+              - "rabbitmqctl authenticate_user drweb password | grep Success"
+          livenessProbe:
+            timeoutSeconds: 1
+            initialDelaySeconds: 30
+            tcpSocket:
+              port: 5672
+          resources:
+            limits:
+              memory: ${MEMORY_LIMIT}
+
+- kind: ImageStream
+  apiVersion: v1
+  metadata:
+    name: ${STACK_NAME}
+    labels:
+      name: ${STACK_NAME}
+    annotations:
+      description: "Keeps track of changes in the application image"
+  selector:
+    name: ${STACK_NAME}
+
+- kind: BuildConfig
+  apiVersion: v1
+  metadata:
+    name: ${STACK_NAME}
+    labels:
+      name: ${STACK_NAME}
+    annotations:
+      description: "Build configuration"
+      template.alpha.openshift.io/wait-for-ready: "true"
+  spec:
+    source:
+      type: "Git"
+      git:
+        uri: ${SOURCE_REPOSITORY_URL}
+        ref: ${SOURCE_REPOSITORY_REF}
+      contextDir: ${CONTEXT_DIR}
+    strategy:
+      type: Docker
+      dockerStrategy:
+        dockerfilePath: Dockerfile
+    output:
+      to:
+        kind: ImageStreamTag
+        name: "${STACK_NAME}:latest"
+    triggers:
+    - type: ImageChange
+    - type: ConfigChange
+    - type: GitHub
+      github:
+        secret: ${GITHUB_WEBHOOK_SECRET}
+    - type: Generic
+      generic:
+        secret: ${GENERIC_WEBHOOK_SECRET}
+    selector:
+      name: ${STACK_NAME}
+
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: ${STACK_NAME}
+    labels:
+      name: ${STACK_NAME}
+    annotations:
+      description: "Stack of applications"
+      service.alpha.openshift.io/dependencies: "[{\"name\": \"${QUEUE_SERVICE_NAME}\", \"kind\": \"Service\"}]"
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      targetPort: 8080
+    selector:
+      name: ${STACK_NAME}
+
+- kind: Route
+  apiVersion: v1
+  metadata:
+    name: ${STACK_NAME}
+    annotations:
+      haproxy.router.openshift.io/balance: source
+    labels:
+      name: ${STACK_NAME}
+  spec:
+    host: ${APPLICATION_DOMAIN}
+    port:
+      targetPort: 8080-tcp
+    to:
+      kind: Service
+      name: ${STACK_NAME}
+    selector:
+      name: ${STACK_NAME}
+
+- kind: DeploymentConfig
+  apiVersion: v1
+  metadata:
+    name: ${STACK_NAME}
+    labels:
+      name: ${STACK_NAME}
+    annotations:
+      description: "App deployment config"
+      template.alpha.openshift.io/wait-for-ready: "true"
+      service.alpha.openshift.io/dependencies: "[{\"name\": \"${QUEUE_SERVICE_NAME}\", \"kind\": \"Service\"}]"
+  spec:
+    strategy:
+      type: Recreate
+    triggers:
+    #- type: ImageChange
+    #  imageChangeParams:
+    #    automatic: true
+    #    containerNames:
+    #    - ${STACK_NAME}
+    #    from:
+    #      kind: ImageStreamTag
+    #      name: "${STACK_NAME}:latest"
+    - type: ConfigChange
+    replicas: 1
+    selector:
+      name: ${STACK_NAME}
+    template:
+      metadata:
+        name: ${STACK_NAME}
+        labels:
+          name: ${STACK_NAME}
+      spec:
+        initContainers:
+        - name: init-db
+          image: "172.30.1.1:5000/sample/${STACK_NAME}:latest"
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: SQLALCHEMY_DATABASE_BASE
+            value: ${SQLALCHEMY_DATABASE_BASE}
+          command: ["sh", "-c", "python manage.py db init -d ${SQLALCHEMY_DATABASE_BASE}/migrations && python manage.py db migrate -d ${SQLALCHEMY_DATABASE_BASE}/migrations && python manage.py db upgrade -d ${SQLALCHEMY_DATABASE_BASE}/migrations"]
+          volumeMounts:
+          - name: "${STACK_NAME}-data"
+            mountPath: ${SQLALCHEMY_DATABASE_BASE}
+        containers:
+        - name: ${FRONT_SERVICE_NAME}
+          image: "172.30.1.1:5000/sample/${STACK_NAME}:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 8080
+          env:
+          - name: SQLALCHEMY_DATABASE_BASE
+            value: ${SQLALCHEMY_DATABASE_BASE}
+          command: ["python", "server.py"]
+          readinessProbe:
+            timeoutSeconds: 10
+            initialDelaySeconds: 3
+            httpGet:
+              path: "/"
+              port: 8080
+          livenessProbe:
+            timeoutSeconds: 10
+            initialDelaySeconds: 30
+            httpGet:
+              path: "/"
+              port: 8080
+          resources:
+            limits:
+              memory: ${MEMORY_LIMIT}
+          volumeMounts:
+          - name: "${STACK_NAME}-data"
+            mountPath: ${SQLALCHEMY_DATABASE_BASE}
+        - name: ${BACK_SERVICE_NAME}
+          image: "172.30.1.1:5000/sample/${STACK_NAME}:latest"
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: SQLALCHEMY_DATABASE_BASE
+            value: ${SQLALCHEMY_DATABASE_BASE}
+          command: ["python", "resolver.py"]
+          volumeMounts:
+          - name: "${STACK_NAME}-data"
+            mountPath: ${SQLALCHEMY_DATABASE_BASE}
+        volumes:
+        - name: "${STACK_NAME}-data"
+          emptyDir:
+            medium: ""
+        selector:
+          name: ${STACK_NAME}
+
+parameters:
+  - name: STACK_NAME
+    displayName: Strack name
+    description: "Name of the stack"
+    required: true
+    value: mystack
+
+  - name: QUEUE_SERVICE_NAME
+    displayName: Queue service name
+    description: "Name of the queue service"
+    required: true
+    value: rabbit
+
+  - name: FRONT_SERVICE_NAME
+    displayName: Frontend service name
+    description: "Name of the frontend service"
+    required: true
+    value: app
+
+  - name: BACK_SERVICE_NAME
+    displayName: Backend service name
+    description: "Name of the backend service"
+    required: true
+    value: resolver
+
+  - name: APPLICATION_DOMAIN
+    displayName: "Application Hostname"
+    description: "The exposed hostname that will route to the Node.js service, if left blank a value will be defaulted."
+    value: ""
+
+  - name: SOURCE_REPOSITORY_URL
+    displayName: "Source Repository URL"
+    description: "The URL of the repository with source code"
+    required: true
+    value: "https://github.com/FromZeus/drweb.git"
+
+  - name: SOURCE_REPOSITORY_REF
+    displayName: "Git Reference"
+    description: "Branch or tag"
+    value: "feature/openshift"
+
+  - name: CONTEXT_DIR
+    displayName": Context Directory
+    description": "Relative path in the project"
+
+  - name: NAMESPACE
+    displayName: Namespace
+    description: "Openshift Namespace of the ImageStreams"
+    required: true
+    value: openshift
+
+  - name: GITHUB_WEBHOOK_SECRET
+    displayName: "GitHub webhook secret"
+    description: "Github trigger secret"
+    generate: expression
+    from: "[a-zA-Z0-9]{40}"
+
+  - name: GENERIC_WEBHOOK_SECRET
+    displayName: "Generic Webhook Secret"
+    description: "A secret for generic webhook"
+    generate: expression
+    from: "[a-zA-Z0-9]{40}"
+
+  - name: SQLALCHEMY_DATABASE_BASE
+    displayName: "SQL Lite Base"
+    description: "SQL Lite base directory"
+    value: /opt/sqlite_data
+
+  - name: MEMORY_LIMIT
+    displayName: "Memory limit"
+    description: "Limit of container RAM"
+    value: 512Mi
