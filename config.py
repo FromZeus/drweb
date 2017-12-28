@@ -18,7 +18,6 @@ HOST = os.environ.get("RABBIT_HOST", "rabbit")
 QUEUE = os.environ.get("RABBIT_QUEUE", "drweb")
 USER = os.environ.get("RABBIT_USER", "drweb")
 PASSWORD = os.environ.get("RABBIT_PASSWORD", "password")
-ROUTING_KEY = "ex.route"
 
 # Resolver
 RESOLVER_MAXIMUM_PARALLEL = os.environ.get("MAXIMUM_PARALLEL", 2)

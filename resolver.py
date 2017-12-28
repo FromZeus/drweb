@@ -8,7 +8,7 @@ from app import task
 from app.bus import Bus
 from app import logger
 
-from config import HOST, QUEUE, USER, PASSWORD, ROUTING_KEY
+from config import HOST, QUEUE, USER, PASSWORD
 from config import RESOLVER_MAXIMUM_PARALLEL, RESOLVER_TIMEOUT
 from config import RESOLVER_LOGFILE, RESOLVER_LOGLEVEL
 
@@ -44,7 +44,7 @@ class Resolver(object):
 
         self.timeout = timeout
         self.available = max_parallel
-        self.queue = Bus.Queue(HOST, USER, PASSWORD, ROUTING_KEY)
+        self.queue = Bus.Queue(HOST, USER, PASSWORD)
 
     def update(self, result):
         try:
@@ -57,15 +57,12 @@ class Resolver(object):
                 format(traceback.format_exc())
             )
 
-    def resolve(self, channel, method, properties, body):
+    @loop
+    def resolve(self):
         if self.available > 0:
             pool = mp.Pool(self.available)
             for i in range(self.available):
-                if body is not None:
-                    t = Bus.DataBase.get_task_from_db(int(body))
-                else:
-                    t = None
-                #t = self.queue.get_task_from_queue(QUEUE)
+                t = self.queue.get_task_from_queue(QUEUE)
                 if t is not None:
                     Bus.DataBase.update_task_in_db(t.id,
                         **{"status": "In process",
@@ -91,8 +88,7 @@ def main():
             log.setLevel(getattr(logging, RESOLVER_LOGLEVEL))
 
         r = Resolver()
-        r.queue.consume_tasks(QUEUE, r.resolve)
-        #r.resolve()
+        r.resolve()
     except KeyboardInterrupt:
         print('\nThe process was interrupted by the user')
         raise SystemExit
