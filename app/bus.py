@@ -29,7 +29,7 @@ class Bus(object):
             db.session.commit()
 
     class Queue(object):
-        def __init__(self, host, user, password):
+        def __init__(self, host, user, password, routing_key):
             self.connection = pika.BlockingConnection(
                 pika.ConnectionParameters(
                     host=host,
@@ -37,6 +37,7 @@ class Bus(object):
                     heartbeat_interval=0
                 )
             )
+            self.routing_key = routing_key
 
         def __enter__(self):
             return self
@@ -49,13 +50,17 @@ class Bus(object):
 
         def send_task_to_queue(self, task, queue):
             channel = self.connection.channel()
+            channel.exchange_declare(exchange="ex",
+                                     exchange_type="topic")
             channel.queue_declare(queue=queue)
-            channel.basic_publish(exchange="",
-                                  routing_key=queue,
+            channel.basic_publish(exchange="ex",
+                                  routing_key=self.routing_key,
                                   body=str(task.id))
 
         def get_task_from_queue(self, queue):
             channel = self.connection.channel()
+            channel.exchange_declare(exchange="ex",
+                                     exchange_type="topic")
             channel.queue_declare(queue=queue)
             id = channel.basic_get(queue=queue, no_ack=True)
 
@@ -65,3 +70,16 @@ class Bus(object):
                 task = None
 
             return task
+
+        def consume_tasks(self, queue, callback):
+            channel = self.connection.channel()
+            channel.exchange_declare(exchange="ex",
+                                     exchange_type="topic")
+            result = channel.queue_declare(queue=queue)
+            channel.queue_bind(result.method.queue,
+                               exchange="ex",
+                               routing_key=self.routing_key)
+            channel.basic_consume(callback,
+                                  result.method.queue,
+                                  no_ack=True)
+            channel.start_consuming()

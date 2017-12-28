@@ -6,7 +6,7 @@ from .models import Task
 from .bus import Bus
 from .forms import CreateTaskForm, RetriveTaskForm
 
-from config import HOST, QUEUE, USER, PASSWORD
+from config import HOST, QUEUE, USER, PASSWORD, ROUTING_KEY
 
 
 @app.route("/")
@@ -26,7 +26,7 @@ def create():
                  end_time=None,
                  difficulty=form.difficulty.data)
         Bus.DataBase.send_task_to_db(t)
-        with Bus.Queue(HOST, USER, PASSWORD) as queue:
+        with Bus.Queue(HOST, USER, PASSWORD, ROUTING_KEY) as queue:
             queue.send_task_to_queue(t, QUEUE)
         return jsonify({"id": t.id})
 
