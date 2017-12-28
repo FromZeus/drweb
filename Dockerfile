@@ -8,7 +8,6 @@ flask_script flask_migrate flask_wtf wtforms
 WORKDIR /opt/drweb
 
 EXPOSE 8080
-USER "rabbitmq"
 
 ADD ./ /opt/drweb
 
