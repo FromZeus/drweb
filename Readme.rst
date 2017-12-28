@@ -1,7 +1,7 @@
 |language| |license|
 
 ===========
-Dr.Web Task
+Sample Task
 ===========
 
 Description
