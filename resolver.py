@@ -44,11 +44,10 @@ class Resolver(object):
 
         self.timeout = timeout
         self.available = max_parallel
-        self.queue = Bus.Queue(HOST, USER, PASSWORD)
 
     def update(self, result):
         try:
-            Bus.DataBase.update_task_in_db(result[0].id, **result[1])
+            Bus.update_task_in_db(result[0].id, **result[1])
             self.available += 1
             log.info("Task {} Complete".format(result[0].id))
         except:
@@ -62,9 +61,9 @@ class Resolver(object):
         if self.available > 0:
             pool = mp.Pool(self.available)
             for i in range(self.available):
-                t = self.queue.get_task_from_queue(QUEUE)
+                t = Bus.get_task_from_queue(HOST, QUEUE, USER, PASSWORD)
                 if t is not None:
-                    Bus.DataBase.update_task_in_db(t.id,
+                    Bus.update_task_in_db(t.id,
                         **{"status": "In process",
                            "start_time": datetime.utcnow()})
                     log.info("Task {} now In process".format(t.id))
