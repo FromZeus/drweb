@@ -25,8 +25,9 @@ def create():
                  start_time=None,
                  end_time=None,
                  difficulty=form.difficulty.data)
-        Bus.send_task_to_db(t)
-        Bus.send_task_to_queue(t, HOST, QUEUE, USER, PASSWORD)
+        Bus.DataBase.send_task_to_db(t)
+        with Bus.Queue(HOST, USER, PASSWORD) as queue:
+            queue.send_task_to_queue(t, QUEUE)
         return jsonify({"id": t.id})
 
     return render_template("create.html",
@@ -41,7 +42,7 @@ def status():
     if id is not None and id != "":
         t = Task.query.get(id)
         if t is not None:
-            t = Bus.get_task_from_db(int(id))
+            t = Bus.DataBase.get_task_from_db(int(id))
             return jsonify({"status": t.status,
                             "creation_time": t.creation_time,
                             "start_time": t.start_time,
