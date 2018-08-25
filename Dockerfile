@@ -6,7 +6,7 @@ ENV HOME=/opt/app-root/src \
     PATH=/opt/app-root/src/bin:/opt/app-root/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:$PATH
 
 RUN mkdir -p ${HOME} && \
-adduser -s /bin/sh -u 1000070000 -G root -h ${HOME} -S -D default && \
+adduser -s /bin/sh -u 1001 -G root -h ${HOME} -S -D default && \
 chown -R 1001:0 /opt/app-root
 
 RUN pip install pika flask flask_sqlalchemy \

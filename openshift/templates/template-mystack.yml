@@ -21,7 +21,7 @@ objects:
   metadata:
     name: ${QUEUE_SERVICE_NAME}
     labels:
-      name: ${STACK_NAME}
+      name: ${QUEUE_SERVICE_NAME}
     annotations: 
       description: "RabbitMQ service for my stack"
   spec:
@@ -31,7 +31,7 @@ objects:
       targetPort: 5672
       protocol: TCP
     selector:
-      name: ${STACK_NAME}
+      name: ${QUEUE_SERVICE_NAME}
 
 - kind: DeploymentConfig
   apiVersion: v1
@@ -57,12 +57,12 @@ objects:
         type: ConfigChange
     replicas: 1
     selector:
-      name: ${STACK_NAME}
+      name: ${QUEUE_SERVICE_NAME}
     template:
       metadata:
         name: ${QUEUE_SERVICE_NAME}
         labels:
-          name: ${STACK_NAME}
+          name: ${QUEUE_SERVICE_NAME}
       spec:
         containers:
         - name: ${QUEUE_SERVICE_NAME}
@@ -301,7 +301,7 @@ parameters:
     displayName: "Source Repository URL"
     description: "The URL of the repository with source code"
     required: true
-    value: "https://github.com/FromZeus/drweb.git"
+    value: "https://github.com/FromZeus/sample-task.git"
 
   - name: SOURCE_REPOSITORY_REF
     displayName: "Git Reference"
