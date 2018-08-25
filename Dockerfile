@@ -24,4 +24,4 @@ USER 1000130000
 
 ADD ./ /opt/app-root/src
 
-ENTRYPOINT su - 1001 -c "python server.py"
+ENTRYPOINT python server.py
