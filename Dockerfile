@@ -19,4 +19,4 @@ USER 1001
 
 ADD ./ /opt/app-root/src
 
-ENTRYPOINT python server.py
+ENTRYPOINT su - default -c "python server.py"
