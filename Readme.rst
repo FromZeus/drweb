@@ -25,7 +25,7 @@ feature/openshift
 
   https://docs.openshift.org/latest/minishift/getting-started/installing.html#installing-instructions
 
-* `minishift start --openshift-version=v3.7.0`
+* `minishift start --openshift-version=v3.10.0`
 
   `minishift console`
 
